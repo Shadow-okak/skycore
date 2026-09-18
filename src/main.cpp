@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include "config.h"
+#include "settings.h"
+#include "language.h"
 #include "input/stick.h"
+#include "input/mode.h"
 #include "core/physics.h"
 #include "core/orbit.h"
 #include "core/camera.h"
@@ -8,6 +11,8 @@
 #include "render/viewport.h"
 #include "render/minimap.h"
 #include "render/hud.h"
+#include "render/worldmap.h"
+#include "menu/menu.h"
 #include "audio/music.h"
 #include "debug.h"
 
@@ -21,54 +26,64 @@ void setup() {
     delay(300);
 
     display_init();
+    settings_init();
+    mode_init();
     stick_init();
     stick_calibrate();
 
-    Serial.printf("Калибровка: cx=%d cy=%d rx=%d ry=%d\n",
-                  stick_centerX, stick_centerY,
-                  stick_rangeX, stick_rangeY);
-
     physics_init();
     orbit_clear();
+    menu_init();
     music_init();
     debug_init();
 
-
-    Serial.println("Игра запущена. Жду событий...");
+    Serial.println(L_BOOT_MESSAGE);
 }
 
 void loop() {
     uint32_t now = millis();
+    ScreenMode mode = mode_read();
 
-    // ===== Физика 60 Гц (×SPEED_MULT) =====
     if (now - lastPhys >= (uint32_t)(DT * 1000)) {
         lastPhys = now;
-        Stick in = stick_read();
 
-        // Сглаживание газа — один раз за кадр (не зависит от SPEED_MULT)
+        Stick in = stick_read();
+        if (mode == MODE_MENU) {
+            in.x = 0; in.y = 0; in.btn = false;
+        }
+
         physics_updateThrottle(in);
 
-        for (int i = 0; i < SPEED_MULT; i++) {
+        int speedMult = settings_timeSpeedValue();
+        for (int i = 0; i < speedMult; i++) {
             physics_step(in);
         }
 
-        // Трейл
         if (now - lastTrail >= 50) {
             lastTrail = now;
             orbit_pushTrail();
         }
-
-        // Предсказание — теперь 10 раз в секунду (было 5)
         if (now - lastPredict >= 100) {
             lastPredict = now;
             orbit_predict();
         }
 
-        // Serial-лог
         debug_tick(now, ship);
     }
 
-    // ===== Рендер 30 FPS =====
+    if (mode == MODE_MENU) {
+        if (now - lastRender >= 33) {
+            lastRender = now;
+            Stick in = stick_read();
+            menu_update(now, in);
+
+            display_frameBegin();
+            menu_draw();
+            display_frameEnd();
+        }
+        return;
+    }
+
     if (now - lastRender >= 33) {
         lastRender = now;
 
@@ -76,10 +91,14 @@ void loop() {
         music_update(now, ship, physics_onGround());
 
         display_frameBegin();
-        viewport_draw();
-        minimap_draw();
-        display_get()->drawVLine(63, 0, 64);
-        hud_draw();
+        if (mode == MODE_WORLDMAP) {
+            worldmap_draw();
+        } else {
+            viewport_draw();
+            minimap_draw();
+            display_get()->drawVLine(63, 0, 64);
+            hud_draw();
+        }
         display_frameEnd();
     }
 }

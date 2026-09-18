@@ -14,8 +14,8 @@ struct Ship {
     float vx, vy;
     float angle;
     float fuel;
-    float throttle;        // текущая тяга (сглаженная)
-    float throttleTarget;  // цель от стика
+    float throttle;
+    float throttleTarget;
 };
 
 extern World world;
@@ -24,8 +24,8 @@ extern Ship  ship;
 constexpr float SHIP_R = 5.0f;
 
 void  physics_init();
-void  physics_updateThrottle(const Stick& in);  // сглаживание газа, 1 раз за кадр
-void  physics_step(const Stick& in);            // 1 шаг физики
+void  physics_updateThrottle(const Stick& in);
+void  physics_step(const Stick& in);
 
 float physics_altitude();
 float physics_localVerticalSpeed();

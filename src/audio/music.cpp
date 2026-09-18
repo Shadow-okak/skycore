@@ -2,8 +2,8 @@
 #include <Arduino.h>
 #include <math.h>
 #include "buzzer.h"
-#include "../config.h"
-#include "../core/physics.h"
+#include "config.h"
+#include "core/physics.h"
 
 // ===== Формат ноты =====
 struct Note {

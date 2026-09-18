@@ -13,13 +13,18 @@
 // ===== Зуммер =====
 #define PIN_BUZZER    15
 
+// ===== Переключатели режима =====
+#define PIN_MENU_SW      17
+#define PIN_WORLDMAP_SW  18
+
 // ===== Экран =====
 #define SCREEN_W      128
 #define SCREEN_H      64
 
 // ===== Общие константы =====
+// TWO_PI уже определён в Arduino.h — свой не нужен
 constexpr float DT         = 1.0f / 60.0f;
 constexpr int   SPEED_MULT = 3;
 
-// Кривая газа: S-curve для плавности
-constexpr float THROTTLE_SMOOTH_K = 0.15f;  // 0..1, больше = быстрее отклик
+// Кривая газа: плавность отклика
+constexpr float THROTTLE_SMOOTH_K = 0.15f;

@@ -3,7 +3,6 @@
 #include "../config.h"
 
 void buzzer_init() {
-    // tone() на ESP32 сам управляет LEDC, ничего дополнительно не нужно
     pinMode(PIN_BUZZER, OUTPUT);
     noTone(PIN_BUZZER);
 }

@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <math.h>
 #include "../config.h"
+#include "../settings.h"
 
 World world;
 Ship  ship;
@@ -10,9 +11,9 @@ void physics_init() {
     world.planetX    = 64;
     world.planetY    = 100;
     world.planetR    = 80;
-    world.gravity    = 8.0f;
-    world.karmanLow  = 30.0f;
-    world.karmanHigh = 90.0f;
+    world.gravity    = settings.gravity;
+    world.karmanLow  = settings.karmanLine;
+    world.karmanHigh = settings.karmanLine * 3.0f;
 
     ship.x = 64;
     ship.y = 0;
@@ -24,11 +25,9 @@ void physics_init() {
     ship.throttleTarget = 0;
 }
 
-// Плавный отклик газа (вызывается в loop 30 раз в секунду)
 void physics_updateThrottle(const Stick& in) {
     float t = in.y;
     if (t < 0.02f) t = 0;
-    // S-curve: плавно на малых, насыщается на больших
     t = t * t * (3.0f - 2.0f * t);
     ship.throttleTarget += (t - ship.throttleTarget) * THROTTLE_SMOOTH_K;
     if (ship.throttleTarget < 0.005f) ship.throttleTarget = 0;
@@ -36,27 +35,28 @@ void physics_updateThrottle(const Stick& in) {
 }
 
 void physics_step(const Stick& in) {
-    // Поворот
-    ship.angle += in.x * 2.5f * DT;
-    if (ship.angle >= TWO_PI) ship.angle -= TWO_PI;
-    if (ship.angle <  0)      ship.angle += TWO_PI;
+    // Поворот — только если не на земле
+    if (!physics_onGround()) {
+        ship.angle += in.x * 2.5f * DT;
+        if (ship.angle >= TWO_PI) ship.angle -= TWO_PI;
+        if (ship.angle <  0)      ship.angle += TWO_PI;
+    }
 
-    // Газ — используем сглаженное значение (обновляется в loop)
     float throttle = ship.throttleTarget;
     if (throttle > 0 && ship.fuel > 0) {
         ship.throttle = throttle;
         float noseX =  sinf(ship.angle);
         float noseY = -cosf(ship.angle);
-        float power = throttle * 50.0f;    // было 100, стало 50
+        float power = throttle * (settings.thrust / 50.0f) * 50.0f;
         ship.vx += noseX * power * DT;
         ship.vy += noseY * power * DT;
-        ship.fuel -= throttle * 0.15f * DT;
+        ship.fuel -= throttle * (settings.fuelRate / 100.0f) * DT;
         if (ship.fuel < 0) ship.fuel = 0;
     } else {
         ship.throttle = 0;
     }
 
-    // Гравитация обратно-квадратичная
+    // Гравитация
     float dx = world.planetX - ship.x;
     float dy = world.planetY - ship.y;
     float d  = sqrtf(dx*dx + dy*dy);
@@ -69,7 +69,7 @@ void physics_step(const Stick& in) {
     ship.x += ship.vx * DT;
     ship.y += ship.vy * DT;
 
-        // Коллизия
+    // Коллизия + трение
     float px = ship.x - world.planetX;
     float py = ship.y - world.planetY;
     float pd = sqrtf(px*px + py*py);
@@ -81,18 +81,18 @@ void physics_step(const Stick& in) {
         ship.x = world.planetX + nx2 * collisionR;
         ship.y = world.planetY + ny2 * collisionR;
 
-        // 1. Гасим радиальную (внутрь планеты)
+        // 1. Радиальная
         float vn = ship.vx * nx2 + ship.vy * ny2;
         if (vn < 0) {
             ship.vx -= vn * nx2;
             ship.vy -= vn * ny2;
         }
 
-        // 2. Гасим тангенциальную (вдоль поверхности) трением
-        vn = ship.vx * nx2 + ship.vy * ny2;   // пересчёт после шага 1, vn >= 0
+        // 2. Тангенциальная — трение
+        vn = ship.vx * nx2 + ship.vy * ny2;
         float vtx = ship.vx - vn * nx2;
         float vty = ship.vy - vn * ny2;
-        constexpr float GROUND_FRICTION = 0.9f;   // 0.9 = быстро стоп, 0.98 = медленно
+        constexpr float GROUND_FRICTION = 0.9f;
         ship.vx = vn * nx2 + vtx * GROUND_FRICTION;
         ship.vy = vn * ny2 + vty * GROUND_FRICTION;
     }

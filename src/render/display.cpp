@@ -12,10 +12,13 @@ void display_init() {
     u8g2.begin();
     u8g2.setContrast(255);
     u8g2.setFont(u8g2_font_6x12_t_cyrillic);
+    u8g2.setDrawColor(1);
 }
 
 void display_frameBegin() {
     u8g2.clearBuffer();
+    u8g2.setDrawColor(1);
+    u8g2.setMaxClipWindow();
 }
 
 void display_frameEnd() {

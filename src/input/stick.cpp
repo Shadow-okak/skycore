@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include <U8g2lib.h>
 #include "../config.h"
+#include "../language.h"
 #include "../render/display.h"
 
 int stick_centerX = 2048;
@@ -50,11 +51,12 @@ Stick stick_read() {
 void stick_calibrate() {
     U8G2* g = display_get();
     g->setFont(u8g2_font_6x12_t_cyrillic);
+    g->setDrawColor(1);
 
     g->clearBuffer();
-    g->drawStr(4, 20, "Калибровка 1/2");
-    g->drawStr(4, 38, "ОТПУСТИ стик");
-    g->drawStr(4, 54, "0.5 сек");
+    g->drawUTF8(4, 20, L_CALIB_HEADER_1);
+    g->drawUTF8(4, 38, L_CALIB_RELEASE);
+    g->drawUTF8(4, 54, L_CALIB_WAIT);
     g->sendBuffer();
 
     long sumX = 0, sumY = 0;
@@ -85,9 +87,9 @@ void stick_calibrate() {
         if (ry > maxY) maxY = ry;
 
         g->clearBuffer();
-        g->drawStr(4, 12, "Калибровка 2/2");
-        g->drawStr(4, 26, "Води стиком");
-        g->drawStr(4, 40, "SW = готово");
+        g->drawUTF8(4, 12, L_CALIB_HEADER_2);
+        g->drawUTF8(4, 26, L_CALIB_MOVE);
+        g->drawUTF8(4, 40, L_CALIB_DONE_SW);
         g->setCursor(4, 58);
         g->print("X:");
         g->print(minX);
@@ -111,16 +113,16 @@ void stick_calibrate() {
 
     g->clearBuffer();
     g->setCursor(0, 14);
-    g->print("Ц:");
+    g->print(L_CALIB_CENTER);
     g->print(stick_centerX);
     g->print(" ");
     g->print(stick_centerY);
     g->setCursor(0, 30);
-    g->print("Р:");
+    g->print(L_CALIB_RANGE);
     g->print(stick_rangeX);
     g->print(" ");
     g->print(stick_rangeY);
-    g->drawStr(0, 50, "Готово!");
+    g->drawUTF8(0, 50, L_CALIB_DONE);
     g->sendBuffer();
     delay(700);
 }

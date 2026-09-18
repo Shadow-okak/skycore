@@ -38,8 +38,8 @@ static void logEvents(const Ship& ship) {
 }
 
 static void logStatus(const Ship& ship) {
-    float alt = physics_altitude();
-    float speed = sqrtf(ship.vx*ship.vx + ship.vy*ship.vy);
+    float alt    = physics_altitude();
+    float speed  = sqrtf(ship.vx*ship.vx + ship.vy*ship.vy);
     float vLocal = physics_localVerticalSpeed();
 
     Serial.printf("[ST] alt=%.0fм  v=%.1f  vл=%.1f  угол=%.0f°  топ=%d%%\n",

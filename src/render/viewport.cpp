@@ -11,7 +11,6 @@ void viewport_draw() {
 
     const int cx = 31, cy = 32;
 
-    // Планета
     float dx = world.planetX - ship.x;
     float dy = world.planetY - ship.y;
     float c = cosf(camRot), s = sinf(camRot);
@@ -36,7 +35,6 @@ void viewport_draw() {
         g->drawHLine(x1, y, x2 - x1 + 1);
     }
 
-    // Корабль
     float screenAngle = ship.angle + camRot;
     int nx, ny, lbx, lby, rbx, rby;
     display_rotatePoint(0, -8, screenAngle, nx, ny, cx, cy);
@@ -46,7 +44,6 @@ void viewport_draw() {
     g->drawTriangle(nx, ny, lbx, lby, rbx, rby);
     g->drawLine(lbx, lby, rbx, rby);
 
-    // Пламя
     if (ship.throttle > 0.05f) {
         int tx, ty;
         display_rotatePoint(0, 6, screenAngle, tx, ty, cx, cy);
