@@ -22,9 +22,26 @@
 #define SCREEN_H      64
 
 // ===== Общие константы =====
-// TWO_PI уже определён в Arduino.h — свой не нужен
 constexpr float DT         = 1.0f / 60.0f;
 constexpr int   SPEED_MULT = 3;
-
-// Кривая газа: плавность отклика
 constexpr float THROTTLE_SMOOTH_K = 0.15f;
+
+// ===== Вращение (инерция) =====
+constexpr float ROT_ACCEL      = 8.0f;
+constexpr float ROT_DAMP_SPACE = 1.5f;
+constexpr float ROT_DAMP_ATMO  = 4.0f;
+constexpr float SAS_KP         = 6.0f;
+constexpr float SAS_KD         = 3.0f;
+
+// ===== Масса =====
+constexpr float MASS_DRY       = 300.0f;
+constexpr float MASS_FUEL_MAX  = 700.0f;
+constexpr float THRUST_FORCE   = 12000.0f;
+
+// ===== Аэродинамика =====
+constexpr float DRAG_K         = 0.008f;
+
+// ===== Зуммер (LEDC) =====
+#define BUZZER_LEDC_CHANNEL  0
+#define BUZZER_LEDC_RES      8
+constexpr int BUZZER_MAX_DUTY = 127;

@@ -1,58 +1,99 @@
 #include "viewport.h"
 #include <math.h>
 #include "display.h"
+#include "grid.h"
+#include "sprites/rocket.h"
 #include "../core/physics.h"
 #include "../core/camera.h"
+#include "../settings.h"
 #include "../config.h"
+
+static const uint8_t* pickRocketSprite(bool thrusting) {
+    bool onGround = physics_onGround();
+    if (onGround)  return thrusting ? rocket_boost : rocket_landed;
+    if (thrusting) return rocket_launch;
+    return rocket_drift;
+}
+
+// Звёзды — фиксированные координаты в кадре
+// (эффект «космической пыли» — они не двигаются при полёте)
+static const uint8_t STARS[][2] = {
+    { 5, 18 }, { 15, 25 }, { 48, 17 }, { 55, 40 }, { 8, 55 },
+    { 40, 20 }, { 20, 48 }, { 55, 55 }, { 30, 17 }, { 50, 30 },
+    { 12, 40 }, { 45, 60 }, { 35, 55 }, { 22, 33 }, { 58, 22 },
+};
+constexpr int STARS_COUNT = sizeof(STARS) / sizeof(STARS[0]);
 
 void viewport_draw() {
     U8G2* g = display_get();
-    g->setClipWindow(0, 0, 62, 63);
+    g->setClipWindow(0, 12, 62, 63);
 
-    const int cx = 31, cy = 32;
+    const int cx = 31;
+    const int cy = 12 + 26;
 
-    float dx = world.planetX - ship.x;
-    float dy = world.planetY - ship.y;
     float c = cosf(camRot), s = sinf(camRot);
-    float rx = dx * c - dy * s;
-    float ry = dx * s + dy * c;
-    int px = cx + (int)rx;
-    int py = cy + (int)ry;
-    int pr = (int)world.planetR;
 
-    int top = py - pr, bot = py + pr;
-    if (top < 0)  top = 0;
-    if (bot > 63) bot = 63;
-    for (int y = top; y <= bot; y++) {
-        int dyy = y - py;
-        int dx2 = pr*pr - dyy*dyy;
-        if (dx2 < 0) continue;
-        int dxx = (int)sqrtf((float)dx2);
-        int x1 = px - dxx, x2 = px + dxx;
-        if (x2 < 0 || x1 > 62) continue;
-        if (x1 < 0)  x1 = 0;
-        if (x2 > 62) x2 = 62;
-        g->drawHLine(x1, y, x2 - x1 + 1);
+    // ===== 1. Звёзды (рисуем первыми, чтобы планета их перекрыла) =====
+    for (int i = 0; i < STARS_COUNT; i++) {
+        g->drawPixel(STARS[i][0], STARS[i][1]);
     }
 
+    // ===== 2. Сетка =====
+    if (settings.grid_mode != GRID_OFF && settings.grid_in_viewport) {
+        int bi = physics_nearestBody();
+        float bdx = bodies[bi].x - ship.x;
+        float bdy = bodies[bi].y - ship.y;
+        float brx = bdx * c - bdy * s;
+        float bry = bdx * s + bdy * c;
+        int bcx = cx + (int)brx;
+        int bcy = cy + (int)bry;
+        int step_px = settings.grid_step;
+        if (settings.grid_mode == GRID_CIRCLE)
+            grid_draw_circle(g, bcx, bcy, step_px, 0, 12, 62, 63);
+        else
+            grid_draw_square(g, bcx, bcy, step_px, 0, 12, 62, 63);
+    }
+
+    // ===== 3. Тела =====
+    for (int bi = 0; bi < BODY_COUNT; bi++) {
+        float bdx = bodies[bi].x - ship.x;
+        float bdy = bodies[bi].y - ship.y;
+        float brx = bdx * c - bdy * s;
+        float bry = bdx * s + bdy * c;
+        int bpx = cx + (int)brx;
+        int bpy = cy + (int)bry;
+        int bpr = (int)bodies[bi].radius;
+
+        int top = bpy - bpr, bot = bpy + bpr;
+        if (top < 12) top = 12;
+        if (bot > 63) bot = 63;
+        for (int y = top; y <= bot; y++) {
+            int dyy = y - bpy;
+            int dx2 = bpr*bpr - dyy*dyy;
+            if (dx2 < 0) continue;
+            int dxx = (int)sqrtf((float)dx2);
+            int x1 = bpx - dxx, x2 = bpx + dxx;
+            if (x2 < 0 || x1 > 62) continue;
+            if (x1 < 0)  x1 = 0;
+            if (x2 > 62) x2 = 62;
+            g->drawHLine(x1, y, x2 - x1 + 1);
+        }
+    }
+
+    // ===== 4. Прицел — пунктирное кольцо вокруг ракеты =====
+    const int RING_R = 11;
+    for (int a = 0; a < 360; a += 30) {
+        float rad = a * 3.14159f / 180.0f;
+        int x = cx + (int)(cosf(rad) * RING_R);
+        int y = cy + (int)(sinf(rad) * RING_R);
+        g->drawPixel(x, y);
+    }
+
+    // ===== 5. Корабль поверх всего =====
     float screenAngle = ship.angle + camRot;
-    int nx, ny, lbx, lby, rbx, rby;
-    display_rotatePoint(0, -8, screenAngle, nx, ny, cx, cy);
-    display_rotatePoint(-6, 6, screenAngle, lbx, lby, cx, cy);
-    display_rotatePoint(6, 6, screenAngle, rbx, rby, cx, cy);
-
-    g->drawTriangle(nx, ny, lbx, lby, rbx, rby);
-    g->drawLine(lbx, lby, rbx, rby);
-
-    if (ship.throttle > 0.05f) {
-        int tx, ty;
-        display_rotatePoint(0, 6, screenAngle, tx, ty, cx, cy);
-        float sTailX = -sinf(screenAngle);
-        float sTailY =  cosf(screenAngle);
-        int bx = tx + (int)(sTailX * 5);
-        int by = ty + (int)(sTailY * 5);
-        g->drawLine(tx, ty, bx, by);
-    }
+    const uint8_t* spr = pickRocketSprite(ship.throttle > 0.05f);
+        display_drawSpriteRotated(cx, cy,
+                                 SPRITE_W, SPRITE_H, spr, screenAngle);
 
     g->setMaxClipWindow();
 }

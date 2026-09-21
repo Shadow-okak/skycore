@@ -1,6 +1,7 @@
 #include "minimap.h"
 #include <math.h>
 #include "display.h"
+#include "grid.h"
 #include "../core/physics.h"
 #include "../core/orbit.h"
 #include "../settings.h"
@@ -8,62 +9,60 @@
 
 void minimap_draw() {
     U8G2* g = display_get();
-    g->setClipWindow(64, 0, 127, 63);
+    g->setClipWindow(64, 12, 127, 63);
 
     const int cx = 96;
-    const int cy = 34;
+    const int cy = 12 + 22;
     const float S = 0.10f;
 
-    int pr = (int)(world.planetR * S);
-    if (pr < 4) pr = 4;
-    g->drawDisc(cx, cy, pr);
+    int bi = physics_nearestBody();
+    int bpx = cx + (int)((bodies[bi].x - ship.x) * S);
+    int bpy = cy + (int)((bodies[bi].y - ship.y) * S);
 
-    int kr = (int)((world.planetR + world.karmanLow) * S);
-    for (int a = 0; a < 360; a += 12) {
-        float rad = a * 3.14159f / 180.0f;
-        int x = cx + (int)(cosf(rad) * kr);
-        int y = cy + (int)(sinf(rad) * kr);
-        if (x < 65 || x > 126) continue;
-        if (y < 2 || y > 62) continue;
-        g->drawPixel(x, y);
-        g->drawPixel(x + 1, y);
+    if (settings.grid_mode != GRID_OFF && settings.grid_in_minimap) {
+        int step_px = (int)(settings.grid_step * S);
+        if (step_px < 4) step_px = 4;
+        if (settings.grid_mode == GRID_CIRCLE)
+            grid_draw_circle(g, bpx, bpy, step_px, 64, 12, 127, 63);
+        else
+            grid_draw_square(g, bpx, bpy, step_px, 64, 12, 127, 63);
+    }
+
+    for (int i = 0; i < BODY_COUNT; i++) {
+        int px = cx + (int)((bodies[i].x - ship.x) * S);
+        int py = cy + (int)((bodies[i].y - ship.y) * S);
+        int pr = (int)(bodies[i].radius * S);
+        if (pr < 3) pr = 3;
+        g->drawDisc(px, py, pr);
+    }
+
+    float karmanLine = settings.karmanLine * bodies[0].karmanMult;
+    if (karmanLine > 0.0f) {
+        int p0x = cx + (int)((bodies[0].x - ship.x) * S);
+        int p0y = cy + (int)((bodies[0].y - ship.y) * S);
+        int kr = (int)((bodies[0].radius + karmanLine) * S);
+        for (int a = 0; a < 360; a += 12) {
+            float rad = a * 3.14159f / 180.0f;
+            int x = p0x + (int)(cosf(rad) * kr);
+            int y = p0y + (int)(sinf(rad) * kr);
+            if (x < 65 || x > 126 || y < 13 || y > 62) continue;
+            g->drawPixel(x, y);
+        }
     }
 
     if (settings.showPrediction) {
         for (int i = 0; i < predictCount; i++) {
-            int sx = cx + (int)(predict[i].dx * S);
-            int sy = cy + (int)(predict[i].dy * S);
-            if (sx < 65 || sx > 126) continue;
-            if (sy < 2 || sy > 62) continue;
+            int sx = cx + (int)((predict[i].x - ship.x) * S);
+            int sy = cy + (int)((predict[i].y - ship.y) * S);
+            if (sx < 65 || sx > 126 || sy < 13 || sy > 62) continue;
             g->drawPixel(sx, sy);
         }
     }
 
-    if (settings.showTrail) {
-        for (int i = 0; i < trailCount; i++) {
-            int idx = (trailHead - trailCount + i + TRAIL_MAX) % TRAIL_MAX;
-            int sx = cx + (int)(trail[idx].dx * S);
-            int sy = cy + (int)(trail[idx].dy * S);
-            if (sx < 65 || sx > 126) continue;
-            if (sy < 2 || sy > 62) continue;
-            if (i % 2 == 0) g->drawPixel(sx, sy);
-        }
-    }
-
-    float dx = ship.x - world.planetX;
-    float dy = ship.y - world.planetY;
-    int sx = cx + (int)(dx * S);
-    int sy = cy + (int)(dy * S);
-
-    if (sx < 66)  sx = 66;
-    if (sx > 125) sx = 125;
-    if (sy < 14)  sy = 14;
-    if (sy > 52)  sy = 52;
-
-    g->drawDisc(sx, sy, 2);
-    int noseX = sx + (int)(sinf(ship.angle) * 5);
-    int noseY = sy - (int)(cosf(ship.angle) * 5);
-    g->drawLine(sx, sy, noseX, noseY);
+    g->drawDisc(cx, cy, 2);
+    int noseX = cx + (int)(sinf(ship.angle) * 5);
+    int noseY = cy - (int)(cosf(ship.angle) * 5);
+    g->drawLine(cx, cy, noseX, noseY);
 
     g->setMaxClipWindow();
 }

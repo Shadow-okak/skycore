@@ -5,20 +5,31 @@
 float camRot = 0;
 
 void camera_update() {
-    float toPlanetX = world.planetX - ship.x;
-    float toPlanetY = world.planetY - ship.y;
-    float d = sqrtf(toPlanetX*toPlanetX + toPlanetY*toPlanetY);
-    if (d < 0.01f) { toPlanetX = 0; toPlanetY = 1; d = 1; }
-    toPlanetX /= d;
-    toPlanetY /= d;
+    int bi = physics_nearestBody();
+    const Body& b = bodies[bi];
 
-    float alt = d - world.planetR;
-    float t = 0;
-    if (alt < world.karmanLow) t = 1;
-    else if (alt < world.karmanHigh)
-        t = (world.karmanHigh - alt) / (world.karmanHigh - world.karmanLow);
+    float toBodyX = b.x - ship.x;
+    float toBodyY = b.y - ship.y;
+    float d = sqrtf(toBodyX*toBodyX + toBodyY*toBodyY);
+    if (d < 0.01f) { toBodyX = 0; toBodyY = 1; d = 1; }
+    toBodyX /= d;
+    toBodyY /= d;
 
-    float lx = -toPlanetX, ly = -toPlanetY;
+    float alt = d - b.radius;
+    float karmanLine = physics_bodyKarman(bi);
+
+    float t;
+    if (karmanLine <= 0.0f) {
+        t = 1.0f;
+    } else if (alt < karmanLine) {
+        t = 1.0f;
+    } else if (alt < karmanLine * 3.0f) {
+        t = (karmanLine * 3.0f - alt) / (karmanLine * 2.0f);
+    } else {
+        t = 0.0f;
+    }
+
+    float lx = -toBodyX, ly = -toBodyY;
     float wx = 0, wy = -1;
     float cux = lx * t + wx * (1 - t);
     float cuy = ly * t + wy * (1 - t);

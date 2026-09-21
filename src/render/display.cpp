@@ -39,3 +39,31 @@ void display_rotatePoint(float x, float y, float a,
     outX = cx + (int)(x * ca - y * sa);
     outY = cy + (int)(x * sa + y * ca);
 }
+
+void display_drawSpriteRotated(int x, int y, int w, int h,
+                               const uint8_t* sprite, float angle) {
+    float cx = w / 2.0f;
+    float cy = h / 2.0f;
+    float ca = cosf(angle);
+    float sa = sinf(angle);
+
+    int bytesPerRow = (w + 7) / 8;
+    int maxR = (int)(sqrtf((float)(w*w + h*h)) / 2.0f) + 2;
+
+    for (int dy = -maxR; dy <= maxR; dy++) {
+        for (int dx = -maxR; dx <= maxR; dx++) {
+            float sx = dx * ca + dy * sa + cx;
+            float sy = -dx * sa + dy * ca + cy;
+
+            int ix = (int)sx;
+            int iy = (int)sy;
+            if (ix < 0 || ix >= w || iy < 0 || iy >= h) continue;
+
+            int byteIdx = iy * bytesPerRow + (ix >> 3);
+            int bitIdx = 7 - (ix & 7);
+            if (sprite[byteIdx] & (1 << bitIdx)) {
+                u8g2.drawPixel(x + dx, y + dy);
+            }
+        }
+    }
+}

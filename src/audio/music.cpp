@@ -3,60 +3,53 @@
 #include <math.h>
 #include "buzzer.h"
 #include "config.h"
+#include "settings.h"
 #include "core/physics.h"
 
-// ===== Формат ноты =====
 struct Note {
-    float freq;      // Гц, 0 = пауза
+    float freq;
     uint32_t durMs;
 };
 
-// ===== МЕЛОДИЯ ПЛАНЕТЫ =====
-// Тёплая минорная пентатоника, медленно. Играет на поверхности и в атмосфере.
 const Note PLANET_MELODY[] = {
-    { 220.00f, 600 },  // A3
+    { 220.00f, 600 },
     {    0.0f, 100 },
-    { 261.63f, 500 },  // C4
-    { 293.66f, 500 },  // D4
+    { 261.63f, 500 },
+    { 293.66f, 500 },
     {    0.0f, 200 },
-    { 246.94f, 500 },  // B3
-    { 220.00f, 700 },  // A3
-    { 196.00f, 500 },  // G3
+    { 246.94f, 500 },
+    { 220.00f, 700 },
+    { 196.00f, 500 },
     {    0.0f, 800 },
 };
 constexpr int PLANET_LEN = sizeof(PLANET_MELODY) / sizeof(Note);
 
-// ===== ОРБИТАЛЬНАЯ МЕЛОДИЯ =====
-// Редкие высокие ноты, эмбиент, длинные паузы.
 const Note ORBIT_MELODY[] = {
-    { 523.25f, 400 },  // C5
-    {    0.0f, 400 },
-    { 659.25f, 400 },  // E5
-    {    0.0f, 600 },
-    { 587.33f, 400 },  // D5
-    {    0.0f, 600 },
-    { 783.99f, 600 },  // G5
-    {    0.0f, 1000 },
+    { 261.63f, 500 },
+    {    0.0f, 800 },
+    { 329.63f, 500 },
+    {    0.0f, 900 },
+    { 293.66f, 500 },
+    {    0.0f, 900 },
+    { 392.00f, 700 },
+    {    0.0f, 1400 },
 };
 constexpr int ORBIT_LEN = sizeof(ORBIT_MELODY) / sizeof(Note);
 
-// ===== ВЫХОД ИЗ КАРМАНА =====
-// Восходящее мажорное арпеджио, ~5 секунд.
 const Note KARMAN_MELODY[] = {
-    {  261.63f, 300 },  // C4
-    {  329.63f, 300 },  // E4
-    {  392.00f, 300 },  // G4
-    {  523.25f, 300 },  // C5
-    {  659.25f, 300 },  // E5
-    {  783.99f, 500 },  // G5
-    { 1046.50f, 500 },  // C6
-    { 1318.51f, 500 },  // E6
-    { 1567.98f, 700 },  // G6
-    { 2093.00f, 1500 }, // C7 — финальный аккорд
+    {  261.63f, 300 },
+    {  329.63f, 300 },
+    {  392.00f, 300 },
+    {  523.25f, 300 },
+    {  659.25f, 300 },
+    {  783.99f, 500 },
+    { 1046.50f, 500 },
+    { 1318.51f, 500 },
+    { 1567.98f, 700 },
+    { 2093.00f, 1500 },
 };
 constexpr int KARMAN_LEN = sizeof(KARMAN_MELODY) / sizeof(Note);
 
-// ===== Состояние =====
 enum MelodyID { M_NONE, M_PLANET, M_ORBIT, M_KARMAN };
 
 MelodyID currentMelody = M_NONE;
@@ -67,7 +60,13 @@ bool     engineActive  = false;
 bool     karmanPlaying = false;
 float    lastAlt       = 0;
 
-// ===== Внутренние =====
+static uint8_t vol() {
+    int v = (settings.volume * BUZZER_MAX_DUTY) / 100;
+    if (v < 0) v = 0;
+    if (v > BUZZER_MAX_DUTY) v = BUZZER_MAX_DUTY;
+    return (uint8_t)v;
+}
+
 static const Note* getMelody(MelodyID id, int& len) {
     switch (id) {
         case M_PLANET: len = PLANET_LEN; return PLANET_MELODY;
@@ -83,7 +82,10 @@ static void startMelody(MelodyID id, uint32_t now) {
     noteStart     = now;
     int len;
     const Note* m = getMelody(id, len);
-    if (m && len > 0) buzzer_tone(m[0].freq);
+    if (m && len > 0) {
+        if (m[0].freq > 0.1f) buzzer_tone(m[0].freq, vol());
+        else                  buzzer_off();
+    }
 }
 
 static void stopMelody() {
@@ -92,7 +94,6 @@ static void stopMelody() {
     buzzer_off();
 }
 
-// ===== Публичные =====
 void music_init() {
     buzzer_init();
     currentMelody   = M_NONE;
@@ -103,46 +104,36 @@ void music_init() {
     lastEngineUpdate = 0;
 }
 
-void music_playStartup() {
-    // Не используется — фоновая мелодия включается автоматически
-}
-
 void music_update(uint32_t now, const Ship& ship, bool onGround) {
     float alt = physics_altitude();
 
-    // ===== Событие: выход из линии Кармана =====
-    if (alt < world.karmanHigh) {
-        karmanPlaying = false;    // вернулись — можно услышать снова
-    }
-    if (!karmanPlaying && lastAlt < world.karmanHigh && alt >= world.karmanHigh) {
+    if (alt < 200.0f) karmanPlaying = false;
+    if (!karmanPlaying && lastAlt < 200.0f && alt >= 200.0f) {
         karmanPlaying = true;
         startMelody(M_KARMAN, now);
     }
     lastAlt = alt;
 
-    // ===== Двигатель (приоритет выше всего) =====
     bool engineNow = ship.throttle > 0.05f;
 
     if (engineNow) {
         if (!engineActive) {
             engineActive = true;
-            stopMelody();       // глушим фон
+            stopMelody();
         }
         if (now - lastEngineUpdate >= 30) {
             lastEngineUpdate = now;
             float freq = 200.0f + ship.throttle * 600.0f;
-            buzzer_tone(freq);
+            buzzer_tone(freq, vol());
         }
         return;
     }
 
     if (engineActive) {
-        // Только что отпустил газ — фон начнётся заново
         engineActive = false;
         stopMelody();
     }
 
-    // ===== Плеер мелодии =====
     if (currentMelody != M_NONE) {
         int len;
         const Note* m = getMelody(currentMelody, len);
@@ -152,29 +143,25 @@ void music_update(uint32_t now, const Ship& ship, bool onGround) {
             currentIdx++;
             if (currentIdx >= len) {
                 if (currentMelody == M_KARMAN) {
-                    // Эпик не зацикливаем
                     karmanPlaying = false;
                     stopMelody();
                 } else {
-                    // Планета / Орбита — зацикливаем
                     currentIdx = 0;
                     noteStart  = now;
-                    buzzer_tone(m[0].freq);
+                    if (m[0].freq > 0.1f) buzzer_tone(m[0].freq, vol());
+                    else                  buzzer_off();
                 }
             } else {
                 noteStart = now;
-                buzzer_tone(m[currentIdx].freq);
+                if (m[currentIdx].freq > 0.1f) buzzer_tone(m[currentIdx].freq, vol());
+                else                           buzzer_off();
             }
         }
         return;
     }
 
-    // ===== Фон: выбрать, что играть =====
     MelodyID want;
-    if (onGround || alt < world.karmanHigh) {
-        want = M_PLANET;
-    } else {
-        want = M_ORBIT;
-    }
+    if (onGround || alt < 200.0f) want = M_PLANET;
+    else                          want = M_ORBIT;
     startMelody(want, now);
 }
