@@ -1,10 +1,10 @@
 #include "music.h"
 #include <Arduino.h>
 #include <math.h>
-#include "buzzer.h"
-#include "config.h"
-#include "settings.h"
-#include "core/physics.h"
+#include "../pins/buzzer.h"
+#include "../config.h"
+#include "../settings.h"
+#include "../sim/physics.h"
 
 struct Note {
     float freq;
@@ -12,41 +12,22 @@ struct Note {
 };
 
 const Note PLANET_MELODY[] = {
-    { 220.00f, 600 },
-    {    0.0f, 100 },
-    { 261.63f, 500 },
-    { 293.66f, 500 },
-    {    0.0f, 200 },
-    { 246.94f, 500 },
-    { 220.00f, 700 },
-    { 196.00f, 500 },
+    { 220.00f, 600 }, {    0.0f, 100 }, { 261.63f, 500 }, { 293.66f, 500 },
+    {    0.0f, 200 }, { 246.94f, 500 }, { 220.00f, 700 }, { 196.00f, 500 },
     {    0.0f, 800 },
 };
 constexpr int PLANET_LEN = sizeof(PLANET_MELODY) / sizeof(Note);
 
 const Note ORBIT_MELODY[] = {
-    { 261.63f, 500 },
-    {    0.0f, 800 },
-    { 329.63f, 500 },
-    {    0.0f, 900 },
-    { 293.66f, 500 },
-    {    0.0f, 900 },
-    { 392.00f, 700 },
-    {    0.0f, 1400 },
+    { 261.63f, 500 }, {    0.0f, 800 }, { 329.63f, 500 }, {    0.0f, 900 },
+    { 293.66f, 500 }, {    0.0f, 900 }, { 392.00f, 700 }, {    0.0f, 1400 },
 };
 constexpr int ORBIT_LEN = sizeof(ORBIT_MELODY) / sizeof(Note);
 
 const Note KARMAN_MELODY[] = {
-    {  261.63f, 300 },
-    {  329.63f, 300 },
-    {  392.00f, 300 },
-    {  523.25f, 300 },
-    {  659.25f, 300 },
-    {  783.99f, 500 },
-    { 1046.50f, 500 },
-    { 1318.51f, 500 },
-    { 1567.98f, 700 },
-    { 2093.00f, 1500 },
+    {  261.63f, 300 }, {  329.63f, 300 }, {  392.00f, 300 }, {  523.25f, 300 },
+    {  659.25f, 300 }, {  783.99f, 500 }, { 1046.50f, 500 }, { 1318.51f, 500 },
+    { 1567.98f, 700 }, { 2093.00f, 1500 },
 };
 constexpr int KARMAN_LEN = sizeof(KARMAN_MELODY) / sizeof(Note);
 

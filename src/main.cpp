@@ -2,20 +2,19 @@
 #include "config.h"
 #include "settings.h"
 #include "language.h"
-#include "input/stick.h"
-#include "input/mode.h"
-#include "core/physics.h"
-#include "core/orbit.h"
-#include "core/camera.h"
-#include "render/display.h"
-#include "render/viewport.h"
-#include "render/minimap.h"
-#include "render/hud.h"
-#include "render/worldmap.h"
-#include "render/sensor_bar.h"
-#include "menu/menu.h"
+#include "pins/stick.h"
+#include "pins/switches.h"
+#include "pins/display.h"
+#include "pins/buzzer.h"
+#include "sim/physics.h"
+#include "sim/orbit.h"
+#include "sim/camera.h"
+#include "view/viewport.h"
+#include "view/minimap.h"
+#include "view/hud.h"
+#include "view/worldmap.h"
+#include "view/menu.h"
 #include "audio/music.h"
-#include "audio/buzzer.h"
 #include "debug.h"
 
 uint32_t lastPhys    = 0;
@@ -28,7 +27,7 @@ void setup() {
 
     display_init();
     settings_init();
-    mode_init();
+    switches_init();
     stick_init();
     stick_calibrate();
 
@@ -43,7 +42,13 @@ void setup() {
 
 void loop() {
     uint32_t now = millis();
-    ScreenMode mode = mode_read();
+    ScreenMode mode = switches_read();
+
+    static ScreenMode lastMode = MODE_FLIGHT;
+    if (mode != lastMode && mode == MODE_MENU) {
+        buzzer_off();
+    }
+    lastMode = mode;
 
     if (now - lastPhys >= (uint32_t)(DT * 1000)) {
         lastPhys = now;
@@ -80,12 +85,6 @@ void loop() {
     }
 
     if (mode == MODE_MENU) {
-        static ScreenMode prevMode = MODE_FLIGHT;
-        if (prevMode != MODE_MENU) {
-            buzzer_off();       // глушим звук при входе в меню
-        }
-        prevMode = mode;
-
         if (now - lastRender >= 33) {
             lastRender = now;
             Stick in = stick_read();
@@ -96,9 +95,6 @@ void loop() {
             display_frameEnd();
         }
         return;
-    } else {
-        static ScreenMode prevMode2 = MODE_MENU;
-        prevMode2 = mode;
     }
 
     if (now - lastRender >= 33) {
@@ -114,8 +110,8 @@ void loop() {
             viewport_draw();
             minimap_draw();
             display_get()->drawVLine(63, 12, 52);
-            hud_draw();
-            sensor_bar_draw();
+            hud_draw_fuel();
+            hud_draw_sensors();
         }
         display_frameEnd();
     }

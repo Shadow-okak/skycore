@@ -82,7 +82,7 @@
 #define L_GRAPH_MINIMAP      "Карта"
 #define L_GRAPH_WORLDMAP     "Мир"
 
-// ===== Меню: значения =====
+// ===== Значения =====
 #define L_VAL_ON             "ВКЛ"
 #define L_VAL_OFF            "ВЫКЛ"
 #define L_SPEED_1X           "1x"
@@ -90,5 +90,5 @@
 #define L_SPEED_3X           "3x"
 #define L_SPEED_5X           "5x"
 
-// ===== HUD =====
+// ===== HUD индикаторы =====
 #define L_HUD_SAS            "С"

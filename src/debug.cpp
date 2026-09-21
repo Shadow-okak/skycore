@@ -1,7 +1,7 @@
 #include "debug.h"
 #include <Arduino.h>
 #include "config.h"
-#include "core/physics.h"
+#include "sim/physics.h"
 
 static bool wasOnGround  = false;
 static bool wasFuelEmpty = false;

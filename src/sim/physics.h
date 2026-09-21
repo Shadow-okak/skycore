@@ -1,5 +1,5 @@
 #pragma once
-#include "../input/stick.h"
+#include "../pins/stick.h"
 
 constexpr int BODY_COUNT = 2;
 
@@ -24,9 +24,8 @@ struct Ship {
 extern Body bodies[BODY_COUNT];
 extern Ship ship;
 
-// Полугабариты корабля в локальной системе (нос = -Y)
-constexpr float SHIP_HALF_W = 4.0f;    // половина ширины
-constexpr float SHIP_HALF_H = 14.0f;   // половина длины
+constexpr float SHIP_HALF_W = 4.0f;
+constexpr float SHIP_HALF_H = 14.0f;
 
 void  physics_init();
 void  physics_updateThrottle(const Stick& in);
@@ -41,10 +40,6 @@ float physics_atmosphere();
 bool  physics_onGround();
 bool  physics_onGroundOf(int i);
 
-// Коллизия корабля (прямоугольник) с телом (круг).
-// Возвращает true при пересечении.
-// nx, ny — нормаль от корабля к телу (мировые координаты).
-// penetration — глубина проникновения.
 bool physics_shipRectCollision(int i, float& nx, float& ny, float& penetration);
 
 float ship_mass();

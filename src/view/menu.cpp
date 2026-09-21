@@ -2,10 +2,10 @@
 #include <Arduino.h>
 #include <stdio.h>
 #include <math.h>
-#include "../render/display.h"
+#include "../pins/display.h"
 #include "../settings.h"
-#include "../core/sensors.h"
-#include "../core/physics.h"
+#include "../sim/sensors.h"
+#include "../sim/physics.h"
 #include "../config.h"
 #include "../language.h"
 
@@ -91,8 +91,6 @@ static int       scrollItem = 0;
 static uint32_t  lastMove   = 0;
 
 constexpr uint32_t MOVE_DELAY   = 180;
-constexpr uint32_t REPEAT_FIRST = 400;
-constexpr uint32_t REPEAT_FAST  = 80;
 constexpr int      VISIBLE_TABS = 5;
 constexpr int      VISIBLE_ITEMS = 4;
 
@@ -162,8 +160,8 @@ static void changeValue(const SettingDef& s, int dir) {
 }
 
 void menu_update(uint32_t now, const Stick& in) {
-    // ===== 1. Сначала кнопка SW (приоритет) =====
     static bool lastBtn = false;
+    if (!in.btn) lastBtn = false;
     bool btnEdge = (in.btn && !lastBtn);
     lastBtn = in.btn;
 
@@ -176,7 +174,7 @@ void menu_update(uint32_t now, const Stick& in) {
             } else {
                 mState = MENU_EDIT_NUM;
             }
-            lastMove = now;   // сбрасываем таймер, чтобы не сработал автоповтор сразу
+            lastMove = now;
             return;
         }
         if (mState == MENU_EDIT_NUM) {
@@ -186,7 +184,6 @@ void menu_update(uint32_t now, const Stick& in) {
         }
     }
 
-    // ===== 2. Направление стика =====
     int ix = 0, iy = 0;
     if (fabs(in.x) > fabs(in.y)) {
         if (in.x >  0.6f) ix =  1;
@@ -196,7 +193,6 @@ void menu_update(uint32_t now, const Stick& in) {
         if (in.y < -0.6f) iy = -1;
     }
 
-    // ===== 3. Переходы между колонками (по фронту) =====
     static int lastIx = 0;
     if (ix != 0 && lastIx == 0) {
         if (mState == MENU_TABS && ix > 0) {
@@ -209,7 +205,6 @@ void menu_update(uint32_t now, const Stick& in) {
         }
     }
 
-    // ===== 4. Стик в покое =====
     bool hasDir = (ix != 0 || iy != 0);
     if (!hasDir) {
         lastMove = 0;
@@ -217,15 +212,13 @@ void menu_update(uint32_t now, const Stick& in) {
         return;
     }
 
-    // ===== 5. Автоповтор =====
     if (lastMove == 0) {
-        lastMove = now;              // первый тик — срабатывает сразу
+        lastMove = now;
     } else if (now - lastMove < MOVE_DELAY) {
         lastIx = ix;
         return;
     }
 
-    // ===== 6. Действия =====
     switch (mState) {
         case MENU_TABS:
             if (iy != 0) {

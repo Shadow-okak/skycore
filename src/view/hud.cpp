@@ -1,12 +1,25 @@
-#include "sensor_bar.h"
-#include "display.h"
+#include "hud.h"
+#include <stdio.h>
+#include "../pins/display.h"
+#include "../sim/physics.h"
+#include "../sim/sensors.h"
 #include "../settings.h"
-#include "../core/sensors.h"
 #include "../config.h"
 #include "../language.h"
-#include <stdio.h>
 
-void sensor_bar_draw() {
+// ===== Нижний правый угол — шкала топлива =====
+void hud_draw_fuel() {
+    U8G2* g = display_get();
+    g->setFont(u8g2_font_6x12_t_cyrillic);
+    g->setDrawColor(1);
+
+    g->drawFrame(102, 54, 24, 8);
+    int fill = (int)(22.0f * ship.fuel);
+    if (fill > 0) g->drawBox(103, 55, fill, 6);
+}
+
+// ===== Верхняя полоса — 3 датчика =====
+void hud_draw_sensors() {
     U8G2* g = display_get();
 
     g->drawHLine(0, 11, 128);

@@ -1,5 +1,5 @@
 #include "settings.h"
-#include "core/sensors.h"
+#include "sim/sensors.h"
 
 Settings settings;
 

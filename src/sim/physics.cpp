@@ -9,15 +9,17 @@ Body bodies[BODY_COUNT];
 Ship ship;
 
 void physics_init() {
+    // Земля — большая, центр глубоко под экраном
     bodies[0].x = 64;
-    bodies[0].y = 100;
-    bodies[0].radius = 80;
+    bodies[0].y = 250;
+    bodies[0].radius = 200;
     bodies[0].gravityMult = 1.0f;
     bodies[0].karmanMult = 1.0f;
 
-    bodies[1].x = 280;
-    bodies[1].y = -60;
-    bodies[1].radius = 25;
+    // Луна — в 3.3 раза меньше земли, дальше
+    bodies[1].x = 500;
+    bodies[1].y = -100;
+    bodies[1].radius = 60;
     bodies[1].gravityMult = 0.5f;
     bodies[1].karmanMult = 0.0f;
 
@@ -80,24 +82,17 @@ float physics_localVerticalSpeed() {
     return -(ship.vx * toX + ship.vy * toY) / dl;
 }
 
-// Проверка: корабль-прямоугольник vs тело-круг.
-// Возвращает true если пересекаются.
-// nx, ny — нормаль от поверхности корабля к центру тела (мировая).
-// penetration — глубина проникновения.
 bool physics_shipRectCollision(int i, float& nx, float& ny, float& penetration) {
     const Body& b = bodies[i];
 
-    // Вектор от корабля к телу в мировой системе
     float dx = b.x - ship.x;
     float dy = b.y - ship.y;
 
-    // В локальную систему корабля (нос = -Y)
     float ca = cosf(ship.angle);
     float sa = sinf(ship.angle);
     float localX =  dx * ca + dy * sa;
     float localY = -dx * sa + dy * ca;
 
-    // Ближайшая точка прямоугольника к центру тела
     float closestX = localX;
     float closestY = localY;
     if (closestX >  SHIP_HALF_W) closestX =  SHIP_HALF_W;
@@ -115,7 +110,6 @@ bool physics_shipRectCollision(int i, float& nx, float& ny, float& penetration) 
 
     float nLocalX, nLocalY;
     if (d < 0.01f) {
-        // Центр тела внутри прямоугольника — выталкиваем по ближайшей стороне
         float dxEdge = SHIP_HALF_W - fabsf(localX);
         float dyEdge = SHIP_HALF_H - fabsf(localY);
         if (dxEdge < dyEdge) {
@@ -133,7 +127,6 @@ bool physics_shipRectCollision(int i, float& nx, float& ny, float& penetration) 
         penetration = b.radius - d;
     }
 
-    // В мировую систему
     nx = nLocalX * ca - nLocalY * sa;
     ny = nLocalX * sa + nLocalY * ca;
 
@@ -141,8 +134,6 @@ bool physics_shipRectCollision(int i, float& nx, float& ny, float& penetration) 
 }
 
 bool physics_onGroundOf(int i) {
-    float nx, ny, pen;
-    // С запасом 0.5 — чтобы ловить «касание»
     float dx = bodies[i].x - ship.x;
     float dy = bodies[i].y - ship.y;
     float ca = cosf(ship.angle);
@@ -276,26 +267,21 @@ void physics_step(const Stick& in) {
     float dvy = ship.vy - vyOld;
     ship.accel = sqrtf(dvx*dvx + dvy*dvy) / DT;
 
-        for (int i = 0; i < BODY_COUNT; i++) {
+    for (int i = 0; i < BODY_COUNT; i++) {
         float nx, ny, pen;
         if (physics_shipRectCollision(i, nx, ny, pen)) {
-            // nx, ny указывает от корабля к телу. Инвертируем —
-            // получаем нормаль «от тела к кораблю», по ней выталкиваем.
             float nOutX = -nx;
             float nOutY = -ny;
 
-            // Выталкиваем корабль
             ship.x += nOutX * pen;
             ship.y += nOutY * pen;
 
-            // Гасим нормальную скорость (движение в тело)
             float vn = ship.vx * nOutX + ship.vy * nOutY;
             if (vn < 0) {
                 ship.vx -= vn * nOutX;
                 ship.vy -= vn * nOutY;
             }
 
-            // Трение по касательной
             vn = ship.vx * nOutX + ship.vy * nOutY;
             float vtx = ship.vx - vn * nOutX;
             float vty = ship.vy - vn * nOutY;

@@ -1,10 +1,10 @@
 #include "viewport.h"
 #include <math.h>
-#include "display.h"
+#include "../pins/display.h"
 #include "grid.h"
 #include "sprites/rocket.h"
-#include "../core/physics.h"
-#include "../core/camera.h"
+#include "../sim/physics.h"
+#include "../sim/camera.h"
 #include "../settings.h"
 #include "../config.h"
 
@@ -15,8 +15,6 @@ static const uint8_t* pickRocketSprite(bool thrusting) {
     return rocket_drift;
 }
 
-// Звёзды — фиксированные координаты в кадре
-// (эффект «космической пыли» — они не двигаются при полёте)
 static const uint8_t STARS[][2] = {
     { 5, 18 }, { 15, 25 }, { 48, 17 }, { 55, 40 }, { 8, 55 },
     { 40, 20 }, { 20, 48 }, { 55, 55 }, { 30, 17 }, { 50, 30 },
@@ -33,12 +31,10 @@ void viewport_draw() {
 
     float c = cosf(camRot), s = sinf(camRot);
 
-    // ===== 1. Звёзды (рисуем первыми, чтобы планета их перекрыла) =====
     for (int i = 0; i < STARS_COUNT; i++) {
         g->drawPixel(STARS[i][0], STARS[i][1]);
     }
 
-    // ===== 2. Сетка =====
     if (settings.grid_mode != GRID_OFF && settings.grid_in_viewport) {
         int bi = physics_nearestBody();
         float bdx = bodies[bi].x - ship.x;
@@ -54,7 +50,6 @@ void viewport_draw() {
             grid_draw_square(g, bcx, bcy, step_px, 0, 12, 62, 63);
     }
 
-    // ===== 3. Тела =====
     for (int bi = 0; bi < BODY_COUNT; bi++) {
         float bdx = bodies[bi].x - ship.x;
         float bdy = bodies[bi].y - ship.y;
@@ -80,7 +75,6 @@ void viewport_draw() {
         }
     }
 
-    // ===== 4. Прицел — пунктирное кольцо вокруг ракеты =====
     const int RING_R = 11;
     for (int a = 0; a < 360; a += 30) {
         float rad = a * 3.14159f / 180.0f;
@@ -89,11 +83,10 @@ void viewport_draw() {
         g->drawPixel(x, y);
     }
 
-    // ===== 5. Корабль поверх всего =====
     float screenAngle = ship.angle + camRot;
     const uint8_t* spr = pickRocketSprite(ship.throttle > 0.05f);
-        display_drawSpriteRotated(cx, cy,
-                                 SPRITE_W, SPRITE_H, spr, screenAngle);
+    display_drawSpriteRotated(cx, cy,
+                              SPRITE_W, SPRITE_H, spr, screenAngle);
 
     g->setMaxClipWindow();
 }

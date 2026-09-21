@@ -1,6 +1,6 @@
 #pragma once
 #include <stdint.h>
-#include "../input/stick.h"
+#include "../pins/stick.h"
 
 void menu_init();
 void menu_update(uint32_t now, const Stick& in);
